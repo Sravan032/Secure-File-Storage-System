@@ -1,20 +1,22 @@
 package com.sravan.Secure.File.Storage.Controller;
 
+import com.sravan.Secure.File.Storage.Security.JwtService;
 import com.sravan.Secure.File.Storage.Service.UserService;
 import com.sravan.Secure.File.Storage.dto.LoginRequest;
 import com.sravan.Secure.File.Storage.dto.RegisterRequest;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import com.sravan.Secure.File.Storage.model.User;
+import com.sravan.Secure.File.Storage.repository.UserRepository;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
     private final UserService userService;
+    private final UserRepository userRepository;
 
-    public AuthController(UserService userService){
+    public AuthController(UserService userService, UserRepository userRepository){
         this.userService=userService;
+        this.userRepository = userRepository;
     }
 
     @PostMapping("/register")
@@ -41,5 +43,21 @@ public class AuthController {
         }else{
             return "Incorrect Username or Password!";
         }
+    }
+
+
+    @GetMapping("/test")
+//    public String test(){
+//        return "Protected endpoint accessed ..";
+//    }
+    public String test(@RequestHeader("Authorization") String authHeader){
+        if(authHeader == null || !authHeader.startsWith("Bearer")) return "missing or Invalid token!";
+        String token = authHeader.substring(7);
+        String username = JwtService.extractUsername(token);
+        User user = userRepository.findByUsername(username).orElse(null);
+        if(user==null)
+            return "Invalid Token!";
+
+        return "Hello "+username +", protected endpoint accessed..";
     }
 }

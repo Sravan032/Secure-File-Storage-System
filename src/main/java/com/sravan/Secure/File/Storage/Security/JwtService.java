@@ -10,7 +10,7 @@ import java.util.Date;
 
 @Service
 public class JwtService {
-    private final SecretKey SECRET_KEY = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+    private static final SecretKey SECRET_KEY = Keys.secretKeyFor(SignatureAlgorithm.HS256);
     public String GenerateToken(String username){
         return Jwts.builder()
                 .setSubject(username)
@@ -19,4 +19,19 @@ public class JwtService {
                 .signWith(SignatureAlgorithm.HS256,SECRET_KEY)
                 .compact();
     }
+
+    public static String extractUsername(String token){
+        return Jwts.parser()
+                .setSigningKey(SECRET_KEY)
+                .parseClaimsJws(token)
+                .getBody()
+                .getSubject();
+    }
+
+    public boolean istokenvalid(String token,String username){
+        String extractedUsername = extractUsername(token);
+        return extractedUsername.equals(username);
+    }
+
+
 }
