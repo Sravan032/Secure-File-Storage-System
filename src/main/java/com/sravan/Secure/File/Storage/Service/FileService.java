@@ -1,36 +1,71 @@
 package com.sravan.Secure.File.Storage.Service;
 
 import com.sravan.Secure.File.Storage.model.FileEntity;
+import com.sravan.Secure.File.Storage.model.User;
 import com.sravan.Secure.File.Storage.repository.FileRepository;
+import com.sravan.Secure.File.Storage.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 public class FileService {
+
     private final FileRepository fileRepository;
-    public FileService(FileRepository fileRepository){
-        this.fileRepository=fileRepository;
+    private final UserRepository userRepository;
+
+    public FileService(FileRepository fileRepository,
+                       UserRepository userRepository) {
+        this.fileRepository = fileRepository;
+        this.userRepository = userRepository;
     }
 
-    public String Uploadfile(MultipartFile file,String username) throws IOException {
-        String UploadDir = "D:/uploads/";
-        File directory = new File(UploadDir);
-        if(!directory.exists()){
-            directory.mkdirs();
+    public String uploadFile(MultipartFile file, String username) throws IOException {
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Path uploadPath = Paths.get("uploads", username);
+
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
         }
 
-        String FilePath = UploadDir+file.getOriginalFilename();
-        file.transferTo(new File(FilePath));
+        String originalFileName = file.getOriginalFilename();
 
-        FileEntity fileEntity = new FileEntity();
-        fileEntity.setFilename(file.getOriginalFilename());
-        fileEntity.setFilepath(FilePath);
-        fileEntity.setUserid(1L);
-        fileRepository.save(fileEntity);
+        String uniqueFileName = UUID.randomUUID() + "_" + originalFileName;
 
-        return "File Uploaded Successfully..";
+        Path filePath = uploadPath.resolve(uniqueFileName);
+
+        file.transferTo(filePath);
+
+        try {
+
+            FileEntity fileEntity = new FileEntity(
+                    originalFileName,
+                    filePath.toString(),
+                    file.getSize(),
+                    file.getContentType(),
+                    LocalDateTime.now(),
+                    user
+            );
+
+            fileRepository.save(fileEntity);
+
+        } catch (Exception e) {
+
+            // Roll back the uploaded file if database save fails
+            Files.deleteIfExists(filePath);
+
+            throw new RuntimeException("Failed to upload file.", e);
+        }
+
+        return "File uploaded successfully";
     }
 }
