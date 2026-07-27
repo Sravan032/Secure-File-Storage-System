@@ -60,7 +60,6 @@ public class FileService {
 
         } catch (Exception e) {
 
-            // Roll back the uploaded file if database save fails
             Files.deleteIfExists(filePath);
 
             throw new RuntimeException("Failed to upload file.", e);
