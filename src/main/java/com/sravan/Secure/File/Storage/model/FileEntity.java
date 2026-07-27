@@ -1,6 +1,7 @@
 package com.sravan.Secure.File.Storage.model;
 
 import jakarta.persistence.*;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -11,14 +12,21 @@ public class FileEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // UUID folder name
+    @Column(nullable = false, unique = true)
+    private String storageId;
+
+    // Original filename shown to user
+    @Column(nullable = false)
     private String fileName;
 
-    private String filePath;
-
+    @Column(nullable = false)
     private long fileSize;
 
+    @Column(nullable = false)
     private String contentType;
 
+    @Column(nullable = false)
     private LocalDateTime uploadedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -28,67 +36,52 @@ public class FileEntity {
     public FileEntity() {
     }
 
-    public FileEntity(String fileName,
-                      String filePath,
-                      long fileSize,
-                      String contentType,
-                      LocalDateTime uploadedAt,
-                      User user) {
-
-        this.fileName = fileName;
-        this.filePath = filePath;
-        this.fileSize = fileSize;
-        this.contentType = contentType;
-        this.uploadedAt = uploadedAt;
-        this.user = user;
-    }
-
     public Long getId() {
         return id;
+    }
+
+    public String getStorageId() {
+        return storageId;
+    }
+
+    public void setStorageId(String storageId) {
+        this.storageId = storageId;
     }
 
     public String getFileName() {
         return fileName;
     }
 
-    public String getFilePath() {
-        return filePath;
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
     }
 
     public long getFileSize() {
         return fileSize;
     }
 
-    public String getContentType() {
-        return contentType;
-    }
-
-    public LocalDateTime getUploadedAt() {
-        return uploadedAt;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public void setFileName(String fileName) {
-        this.fileName = fileName;
-    }
-
-    public void setFilePath(String filePath) {
-        this.filePath = filePath;
-    }
-
     public void setFileSize(long fileSize) {
         this.fileSize = fileSize;
+    }
+
+    public String getContentType() {
+        return contentType;
     }
 
     public void setContentType(String contentType) {
         this.contentType = contentType;
     }
 
+    public LocalDateTime getUploadedAt() {
+        return uploadedAt;
+    }
+
     public void setUploadedAt(LocalDateTime uploadedAt) {
         this.uploadedAt = uploadedAt;
+    }
+
+    public User getUser() {
+        return user;
     }
 
     public void setUser(User user) {
