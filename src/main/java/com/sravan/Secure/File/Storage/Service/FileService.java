@@ -3,6 +3,7 @@ package com.sravan.Secure.File.Storage.Service;
 import com.sravan.Secure.File.Storage.Security.AESUtil;
 import com.sravan.Secure.File.Storage.Security.RSAUtil;
 import com.sravan.Secure.File.Storage.model.FileEntity;
+import com.sravan.Secure.File.Storage.model.StorageMetadata;
 import com.sravan.Secure.File.Storage.model.User;
 import com.sravan.Secure.File.Storage.repository.FileRepository;
 import com.sravan.Secure.File.Storage.repository.UserRepository;
@@ -36,7 +37,8 @@ public class FileService {
         this.secureStorageService = secureStorageService;
     }
 
-    public String uploadFile(MultipartFile file, String username) throws Exception {
+    public String uploadFile(MultipartFile file, String username)
+            throws Exception {
 
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -47,28 +49,53 @@ public class FileService {
 
         try {
 
-            // Read uploaded file
+            // Read original file
             byte[] originalBytes = file.getBytes();
 
-            // Generate AES Key
+            // Generate AES key
             SecretKey aesKey = aesUtil.generateKey();
 
-            // Encrypt File
-            byte[] encryptedFile = aesUtil.encrypt(originalBytes, aesKey);
+            // Encrypt file using AES
+            byte[] encryptedFile =
+                    aesUtil.encrypt(originalBytes, aesKey);
 
-            // Encrypt AES Key
-            byte[] encryptedKey = rsaUtil.encryptAESKey(aesKey);
+            // Encrypt AES key using RSA
+            byte[] encryptedKey =
+                    rsaUtil.encryptAESKey(aesKey);
 
-            // Create storage directory
-            storageDirectory = secureStorageService.createStorageDirectory(storageId);
+            // Create UUID-based storage directory
+            storageDirectory =
+                    secureStorageService.createStorageDirectory(storageId);
 
             // Save encrypted file
-            secureStorageService.saveEncryptedFile(storageDirectory, encryptedFile);
+            secureStorageService.saveEncryptedFile(
+                    storageDirectory,
+                    encryptedFile
+            );
 
             // Save encrypted AES key
-            secureStorageService.saveEncryptedKey(storageDirectory, encryptedKey);
+            secureStorageService.saveEncryptedKey(
+                    storageDirectory,
+                    encryptedKey
+            );
 
-            // Save metadata
+            // Create metadata
+            StorageMetadata metadata = new StorageMetadata(
+                    file.getOriginalFilename(),
+                    file.getContentType(),
+                    file.getSize(),
+                    "AES-256",
+                    "RSA-2048",
+                    LocalDateTime.now().toString()
+            );
+
+            // Save metadata.json
+            secureStorageService.saveMetadata(
+                    storageDirectory,
+                    metadata
+            );
+
+            // Save database metadata
             FileEntity entity = new FileEntity();
 
             entity.setStorageId(storageId);
@@ -88,7 +115,10 @@ public class FileService {
                 secureStorageService.deleteStorage(storageDirectory);
             }
 
-            throw new RuntimeException("Failed to upload file.", e);
+            throw new RuntimeException(
+                    "Failed to upload file.",
+                    e
+            );
         }
     }
 }

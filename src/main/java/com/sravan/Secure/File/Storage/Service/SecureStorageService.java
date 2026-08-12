@@ -1,5 +1,7 @@
 package com.sravan.Secure.File.Storage.Service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sravan.Secure.File.Storage.model.StorageMetadata;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -12,9 +14,12 @@ public class SecureStorageService {
 
     private static final String ROOT_DIRECTORY = "uploads";
 
-    /**
-     * Creates a new storage folder using storageId.
-     */
+    private final ObjectMapper objectMapper;
+
+    public SecureStorageService(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
+
     public Path createStorageDirectory(String storageId) throws IOException {
 
         Path storagePath = Paths.get(ROOT_DIRECTORY, storageId);
@@ -26,9 +31,6 @@ public class SecureStorageService {
         return storagePath;
     }
 
-    /**
-     * Saves encrypted file.
-     */
     public Path saveEncryptedFile(Path storagePath,
                                   byte[] encryptedFile) throws IOException {
 
@@ -39,9 +41,6 @@ public class SecureStorageService {
         return filePath;
     }
 
-    /**
-     * Saves encrypted AES key.
-     */
     public Path saveEncryptedKey(Path storagePath,
                                  byte[] encryptedKey) throws IOException {
 
@@ -52,23 +51,31 @@ public class SecureStorageService {
         return keyPath;
     }
 
-    /**
-     * Deletes entire storage directory.
-     */
+    public void saveMetadata(Path storagePath,
+                             StorageMetadata metadata) throws IOException {
+
+        Path metadataPath = storagePath.resolve("metadata.json");
+
+        objectMapper.writerWithDefaultPrettyPrinter()
+                .writeValue(metadataPath.toFile(), metadata);
+    }
+
     public void deleteStorage(Path storagePath) throws IOException {
 
         if (!Files.exists(storagePath)) {
             return;
         }
 
-        Files.walk(storagePath)
-                .sorted((a, b) -> b.compareTo(a))
-                .forEach(path -> {
-                    try {
-                        Files.deleteIfExists(path);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                });
+        try (var paths = Files.walk(storagePath)) {
+
+            paths.sorted((a, b) -> b.compareTo(a))
+                    .forEach(path -> {
+                        try {
+                            Files.deleteIfExists(path);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+        }
     }
 }
