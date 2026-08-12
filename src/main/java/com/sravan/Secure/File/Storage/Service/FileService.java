@@ -2,11 +2,14 @@ package com.sravan.Secure.File.Storage.Service;
 
 import com.sravan.Secure.File.Storage.Security.AESUtil;
 import com.sravan.Secure.File.Storage.Security.RSAUtil;
+import com.sravan.Secure.File.Storage.dto.FileDownloadResponse;
 import com.sravan.Secure.File.Storage.model.FileEntity;
 import com.sravan.Secure.File.Storage.model.StorageMetadata;
 import com.sravan.Secure.File.Storage.model.User;
 import com.sravan.Secure.File.Storage.repository.FileRepository;
 import com.sravan.Secure.File.Storage.repository.UserRepository;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -49,37 +52,29 @@ public class FileService {
 
         try {
 
-            // Read original file
             byte[] originalBytes = file.getBytes();
 
-            // Generate AES key
             SecretKey aesKey = aesUtil.generateKey();
 
-            // Encrypt file using AES
             byte[] encryptedFile =
                     aesUtil.encrypt(originalBytes, aesKey);
 
-            // Encrypt AES key using RSA
             byte[] encryptedKey =
                     rsaUtil.encryptAESKey(aesKey);
 
-            // Create UUID-based storage directory
             storageDirectory =
                     secureStorageService.createStorageDirectory(storageId);
 
-            // Save encrypted file
             secureStorageService.saveEncryptedFile(
                     storageDirectory,
                     encryptedFile
             );
 
-            // Save encrypted AES key
             secureStorageService.saveEncryptedKey(
                     storageDirectory,
                     encryptedKey
             );
 
-            // Create metadata
             StorageMetadata metadata = new StorageMetadata(
                     file.getOriginalFilename(),
                     file.getContentType(),
@@ -89,13 +84,11 @@ public class FileService {
                     LocalDateTime.now().toString()
             );
 
-            // Save metadata.json
             secureStorageService.saveMetadata(
                     storageDirectory,
                     metadata
             );
 
-            // Save database metadata
             FileEntity entity = new FileEntity();
 
             entity.setStorageId(storageId);
@@ -120,5 +113,40 @@ public class FileService {
                     e
             );
         }
+    }
+
+    public FileDownloadResponse downloadFile(String storageId,
+                                             String username)
+            throws Exception {
+
+        FileEntity fileEntity =
+                fileRepository
+                        .findByStorageIdAndUserUsername(
+                                storageId,
+                                username
+                        )
+                        .orElseThrow(
+                                () -> new RuntimeException(
+                                        "File not found"
+                                )
+                        );
+
+        byte[] encryptedKey =
+                secureStorageService.readEncryptedKey(storageId);
+
+        SecretKey aesKey =
+                rsaUtil.decryptAESKey(encryptedKey);
+
+        byte[] encryptedFile =
+                secureStorageService.readEncryptedFile(storageId);
+
+        byte[] decryptedFile =
+                aesUtil.decrypt(encryptedFile, aesKey);
+
+        return new FileDownloadResponse(
+                decryptedFile,
+                fileEntity.getFileName(),
+                fileEntity.getContentType()
+        );
     }
 }

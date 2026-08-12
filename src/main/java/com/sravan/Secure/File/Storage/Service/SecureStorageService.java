@@ -60,6 +60,28 @@ public class SecureStorageService {
                 .writeValue(metadataPath.toFile(), metadata);
     }
 
+    public byte[] readEncryptedFile(String storageId) throws IOException {
+
+        Path filePath = Paths.get(
+                ROOT_DIRECTORY,
+                storageId,
+                "file.enc"
+        );
+
+        return Files.readAllBytes(filePath);
+    }
+
+    public byte[] readEncryptedKey(String storageId) throws IOException {
+
+        Path keyPath = Paths.get(
+                ROOT_DIRECTORY,
+                storageId,
+                "key.enc"
+        );
+
+        return Files.readAllBytes(keyPath);
+    }
+
     public void deleteStorage(Path storagePath) throws IOException {
 
         if (!Files.exists(storagePath)) {
